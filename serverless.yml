@@ -1,0 +1,80 @@
+service: pytho-test-api
+frameworkVersion: '3'
+
+custom:
+  tableName: 'posts-table-${self:provider.stage}'
+
+provider:
+  name: aws
+  runtime: python3.8
+  stage: dev
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [ PostsTable, Arn ]
+  environment:
+    POSTS_TABLE: ${self:custom.tableName}
+
+functions:
+  list_post:
+    handler: app.list_post
+    events:
+      - httpApi:
+          path: /
+          method: get
+
+  create_post:
+    handler: app.create_post
+    events:
+      - httpApi:
+          path: /
+          method: post
+
+  get_post:
+    handler: app.get_post
+    events:
+      - httpApi:
+          path: /{id}
+          method: get
+
+  update_post:
+    handler: app.update_post
+    events:
+      - httpApi:
+          path: /{id}
+          method: put
+  
+  delete_post:
+    handler: app.delete_post
+    events:
+      - httpApi:
+          path: /{id}
+          method: delete
+
+plugins:
+  - serverless-python-requirements
+
+resources:
+  Resources:
+    PostsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: postId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: postId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}
